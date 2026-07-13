@@ -578,7 +578,7 @@ def sidebar_brand() -> None:
         )
         nav_link("pages/precificacao_frete.py", "01 Frete e custo")
         nav_link("pages/mini_torre_controle.py", "02 Torre de controle")
-        nav_link("pages/cvrp_urbano.py", "03 Roteirização CVRP")
+        nav_link("pages/cvrp_urbano.py", "08 Roteirização CVRP")
         st.markdown(
             "<div class='demo-sidebar-section'>Biblioteca</div>", unsafe_allow_html=True
         )
@@ -826,7 +826,9 @@ def insight(texto: str, icone: str = "💡") -> None:
     )
 
 
-def progress_bar(label: str, valor: float, maximo: float = 100.0, cor: str | None = None) -> None:
+def progress_bar(
+    label: str, valor: float, maximo: float = 100.0, cor: str | None = None
+) -> None:
     """Barra de progresso estilizada com a paleta da marca.
 
     `valor` e `maximo` devem estar na mesma escala (padrão 0-100).
@@ -841,7 +843,7 @@ def progress_bar(label: str, valor: float, maximo: float = 100.0, cor: str | Non
             <span style="font-size:.78rem;font-weight:750;color:{brand.MUTED};">{valor:.1f}%</span>
           </div>
           <div style="height:8px;background:{brand.EDITORIAL_2};border-radius:999px;overflow:hidden;border:1px solid {brand.BORDER};">
-            <div style="width:{pct*100:.2f}%;height:100%;background:{cor_hex};border-radius:999px;transition:width .4s ease;"></div>
+            <div style="width:{pct * 100:.2f}%;height:100%;background:{cor_hex};border-radius:999px;transition:width .4s ease;"></div>
           </div>
         </div>
         """,
