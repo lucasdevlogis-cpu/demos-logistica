@@ -1,7 +1,8 @@
 # Demos Logística — Streamlit Cloud
 
 Demos interativas embedadas no portfólio Lucas Batista via iframe (`?embed=true`).
-Adaptam cases de logística BR com amostras curadas, mapas Plotly e gráficos. Resultados demonstrativos.
+
+**READMEs por case:** [`docs/cases/README.md`](docs/cases/README.md) (10 cases demonstráveis).
 
 ## Pages (11)
 
@@ -23,7 +24,7 @@ Adaptam cases de logística BR com amostras curadas, mapas Plotly e gráficos. R
 
 A landing Next.js usa `CASE_DEMO_SLUGS` em `data/content.ts` (10 cases demonstráveis).
 
-**Importante:** a URL Streamlit **não** inclui o prefixo numérico do arquivo. Ex.: `pages/08_ship_from_store.py` → `/ship_from_store?embed=true`.
+**Importante:** a URL Streamlit **não** inclui o prefixo numérico do arquivo. Ex.: `pages/ship_from_store.py` → `/ship_from_store?embed=true`.
 
 | Case ID (landing) | Arquivo page | URL embed |
 |-------------------|--------------|-----------|

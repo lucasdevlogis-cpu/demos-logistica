@@ -25,13 +25,13 @@ def apply_theme() -> None:
     tmpl.layout.font = dict(family=brand.FONT_FAMILY, color=brand.FOREGROUND)
     tmpl.layout.colorway = brand.SEQ
     tmpl.layout.paper_bgcolor = "rgba(0,0,0,0)"
-    tmpl.layout.plot_bgcolor = brand.CARD
+    tmpl.layout.plot_bgcolor = "#ffffff"
     tmpl.layout.margin = dict(t=34, b=36, l=18, r=18)
-    tmpl.layout.title = dict(font=dict(color=brand.INK, size=17))
+    tmpl.layout.title = dict(font=dict(color=brand.INK, size=17, family=brand.HEADING_FONT_FAMILY))
     tmpl.layout.bargap = 0.18
     tmpl.layout.bargroupgap = 0.08
     tmpl.layout.legend = dict(
-        bgcolor="rgba(255,253,248,0.76)",
+        bgcolor="rgba(255,255,255,0.82)",
         bordercolor=brand.BORDER,
         borderwidth=1,
         font=dict(color=brand.MUTED, size=12),
@@ -59,6 +59,15 @@ def apply_theme() -> None:
         title=dict(font=dict(color=brand.MUTED)),
         automargin=True,
     )
+    tmpl.layout.coloraxis = dict(
+        colorbar=dict(
+            bgcolor="rgba(255,253,248,0.82)",
+            bordercolor=brand.BORDER,
+            borderwidth=1,
+            tickfont=dict(color=brand.MUTED),
+            title=dict(font=dict(color=brand.INK)),
+        )
+    )
     pio.templates[_THEME_NAME] = tmpl
     pio.templates.default = f"plotly_white+{_THEME_NAME}"
 
@@ -81,7 +90,7 @@ def add_reference_line(
             annotation_text=label,
             annotation_position="top right",
             annotation_font=dict(color=color, size=11),
-            annotation_bgcolor="rgba(255,253,248,0.82)",
+            annotation_bgcolor="rgba(255,255,255,0.82)",
             annotation_bordercolor=brand.BORDER,
             annotation_borderwidth=1,
         )
@@ -94,7 +103,7 @@ def add_reference_line(
             annotation_text=label,
             annotation_position="top right",
             annotation_font=dict(color=color, size=11),
-            annotation_bgcolor="rgba(255,253,248,0.82)",
+            annotation_bgcolor="rgba(255,255,255,0.82)",
             annotation_bordercolor=brand.BORDER,
             annotation_borderwidth=1,
         )
@@ -106,7 +115,7 @@ def polish(fig: go.Figure) -> go.Figure:
     fig.update_layout(
         font=dict(family=brand.FONT_FAMILY, color=brand.FOREGROUND),
         paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor=brand.CARD,
+        plot_bgcolor="#ffffff",
         hoverlabel=dict(
             bgcolor=brand.SURFACE_DARK,
             bordercolor=brand.SURFACE_DARK,
@@ -117,6 +126,15 @@ def polish(fig: go.Figure) -> go.Figure:
     fig.update_xaxes(automargin=True, showline=True, linewidth=1, linecolor=brand.BORDER)
     fig.update_yaxes(automargin=True, showline=True, linewidth=1, linecolor=brand.BORDER)
     return fig
+
+
+def _discrete_colors(color: str | None, color_discrete_map: dict[str, str] | None) -> dict:
+    kwargs: dict = {}
+    if color:
+        kwargs["color"] = color
+        if color_discrete_map is not None:
+            kwargs["color_discrete_map"] = color_discrete_map
+    return kwargs
 
 
 def map_points(
@@ -133,14 +151,11 @@ def map_points(
     color_discrete_map: dict[str, str] | None = None,
 ) -> go.Figure:
     """Mapa de pontos sobre OpenStreetMap (sem token)."""
-    color_kwargs = {}
-    if color:
-        color_kwargs["color_discrete_map"] = color_discrete_map or brand.STATUS_COLORS
+    color_kwargs = _discrete_colors(color, color_discrete_map or brand.STATUS_COLORS)
     fig = px.scatter_map(
         df,
         lat=lat,
         lon=lon,
-        color=color,
         size=size,
         hover_name=hover_name,
         hover_data=list(hover_data) if hover_data else None,

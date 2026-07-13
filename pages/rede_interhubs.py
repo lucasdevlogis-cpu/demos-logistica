@@ -7,7 +7,7 @@ rede em Folium e ranking de lanes para priorização e negociação.
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from lib import brand, folium_maps as fm, format, tables, ui
+from lib import brand, folium_maps as fm, format as fmt, tables, ui
 
 ui.page_setup("06. Rede Inter-hubs", icon="🕸️")
 
@@ -24,7 +24,32 @@ with ui.filter_container("Premissas de custo"):
         default=sorted(df["service_level"].unique()),
     )
 
-base = df[df["service_level"].isin(niveis)].copy() if niveis else df.copy()
+base = df[df["service_level"].isin(niveis)].copy()
+
+ui.breadcrumb("Case: Rede Inter-hubs · <b>Demo interativa</b>")
+
+if base.empty:
+    ui.hero(
+        "06. Rede Inter-hubs / Corredores",
+        "Qual corredor tem melhor custo por tonelada e onde priorizar consolidação?",
+        frameworks=["NetworkX", "Desenho de rede", "Custo por tonelada"],
+        selo=brand.maturidade(
+            metodo="custo paramétrico", producao="malha real + pedágio vigente"
+        ),
+        metric={
+            "label": "Melhor corredor (custo/ton)",
+            "value": "—",
+            "delta": "Selecione pelo menos um nível de serviço",
+            "help": "Lane com menor custo por tonelada dentre as filtradas.",
+        },
+    )
+    ui.insight(
+        "Nenhum corredor com os filtros atuais. Selecione pelo menos um nível de serviço para visualizar a rede.",
+        icone="🕸️",
+    )
+    ui.footer()
+    st.stop()
+
 base["custo_total"] = (
     base["distance_km"] * rate_km + base["volume_ton"] * base["distance_km"] * ton_km
 ).round(2)
@@ -34,8 +59,6 @@ base = base.sort_values("custo_por_ton")
 
 melhor = base.iloc[0]
 media_ton = base["custo_por_ton"].mean()
-
-ui.breadcrumb("Case: Rede Inter-hubs · <b>Demo interativa</b>")
 
 ui.hero(
     "06. Rede Inter-hubs / Corredores",
@@ -48,8 +71,8 @@ ui.hero(
         "label": "Melhor corredor (custo/ton)",
         "value": f"{melhor['lane']}",
         "delta": (
-            f"R$ {format.fmt_number(melhor['custo_por_ton'], decimals=0)}/ton · "
-            f"{format.fmt_percent((1 - melhor['custo_por_ton'] / media_ton) * 100, decimals=0)} abaixo da média"
+            f"R$ {fmt.fmt_number(melhor['custo_por_ton'], decimals=0)}/ton · "
+            f"{fmt.fmt_percent((1 - melhor['custo_por_ton'] / media_ton) * 100, decimals=0)} abaixo da média"
         ),
         "help": "Lane com menor custo por tonelada dentre as filtradas.",
     },
@@ -60,15 +83,15 @@ ui.kpi_grid(
         {"label": "Corredores", "value": f"{len(base)}"},
         {
             "label": "Volume total",
-            "value": f"{format.fmt_number(base['volume_ton'].sum(), decimals=0)} t",
+            "value": f"{fmt.fmt_number(base['volume_ton'].sum(), decimals=0)} t",
         },
         {
             "label": "Custo total",
-            "value": format.fmt_currency(base["custo_total"].sum(), decimals=0),
+            "value": fmt.fmt_currency(base["custo_total"].sum(), decimals=0),
         },
         {
             "label": "Custo médio/ton",
-            "value": format.fmt_currency(media_ton, decimals=0),
+            "value": fmt.fmt_currency(media_ton, decimals=0),
         },
     ]
 )
@@ -87,9 +110,9 @@ for _, r in base.iterrows():
             "to": (r["destino_lat"], r["destino_lon"]),
             "label": (
                 f"{r['lane']}<br>"
-                f"Volume: {format.fmt_number(r['volume_ton'], decimals=0)} t<br>"
-                f"Distância: {format.fmt_number(r['distance_km'], decimals=0)} km<br>"
-                f"Custo/ton: {format.fmt_currency(r['custo_por_ton'], decimals=2)}"
+                f"Volume: {fmt.fmt_number(r['volume_ton'], decimals=0)} t<br>"
+                f"Distância: {fmt.fmt_number(r['distance_km'], decimals=0)} km<br>"
+                f"Custo/ton: {fmt.fmt_currency(r['custo_por_ton'], decimals=2)}"
             ),
             "width": r["volume_ton"],
         }
@@ -114,10 +137,21 @@ with tab_visao:
     map_height = ui.map_height(brand.MAP_FULL_HEIGHT)
     m = fm.base_map(center, zoom=4, height=map_height)
     m = fm.add_network(m, nodes_df, edges, lat="lat", lon="lon", label="id")
+    max_vol = base["volume_ton"].max()
+    min_vol = base["volume_ton"].min()
+    m = fm.add_legend(
+        m,
+        "Volume do corredor",
+        [
+            {"color": brand.PRIMARY, "label": f"Maior ({fmt.fmt_number(max_vol, decimals=0)} t) — linha grossa"},
+            {"color": brand.PRIMARY, "label": f"Menor ({fmt.fmt_number(min_vol, decimals=0)} t) — linha fina"},
+        ],
+        position="bottomright",
+    )
     fm.render(m, height=map_height, key="rede_interhubs_mapa")
     st.caption(
         "Linhas retas entre cidades (geodésicas), não rotas rodoviárias reais. "
-        "Arestas com espessura proporcional ao volume movimentado."
+        "Arestas com espessura proporcional ao volume movimentado (ver legenda)."
     )
 
 with tab_analise:
@@ -130,10 +164,10 @@ with tab_analise:
             y="lane",
             orientation="h",
             color="custo_por_ton",
-            color_continuous_scale=[brand.ACCENT, brand.PRIMARY, brand.DANGER],
+            color_continuous_scale=[brand.ACCENT, brand.WARM_ACCENT, brand.DANGER],
         )
         fig.update_traces(
-            hovertemplate=format.fmt_hover(
+            hovertemplate=fmt.fmt_hover(
                 [
                     ("Corredor", "%{y}"),
                     ("Custo/ton", "R$ %{x:,.2f}"),
@@ -162,9 +196,8 @@ with tab_analise:
             x="distance_km",
             y="custo_por_ton",
             size="volume_ton",
-            color="service_level",
+            color_discrete_sequence=[brand.PRIMARY],
             hover_name="lane",
-            color_discrete_sequence=brand.SEQ,
             labels={"distance_km": "Distância (km)", "custo_por_ton": "R$/ton"},
         )
         fig2.add_hline(
@@ -175,7 +208,7 @@ with tab_analise:
             annotation_position="top right",
         )
         fig2.update_traces(
-            hovertemplate=format.fmt_hover(
+            hovertemplate=fmt.fmt_hover(
                 [
                     ("Corredor", "%{hovertext}"),
                     ("Distância", "%{x:,.0f} km"),
@@ -201,9 +234,10 @@ with tab_analise:
     tables.format_dataframe(tabela, config)
 
     pior = base.iloc[-1]
-    st.info(
+    ui.insight(
         f"Priorize negociação/consolidação nas lanes de maior custo/ton: "
-        f"**{pior['lane']}** a {format.fmt_currency(pior['custo_por_ton'], decimals=0)}/t."
+        f"**{pior['lane']}** a {fmt.fmt_currency(pior['custo_por_ton'], decimals=0)}/t.",
+        icone="💡",
     )
 
 with tab_exportar:
@@ -226,6 +260,6 @@ ui.provenance_expander(
     producao="Modelo de rede com malha real e custos contratados.",
     limitacoes="Sem pedágio real, consolidação multi-lane ou balanceamento de fluxo.",
 )
-ui.demo_cta(next_demo_path="pages/07_classificador_ocorrencias.py")
+ui.demo_cta(next_demo_path="pages/classificador_ocorrencias.py")
 
 ui.footer()

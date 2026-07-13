@@ -46,7 +46,31 @@ with ui.filter_container("Parâmetros globais"):
         default=sorted(df["origin_uf"].unique()),
     )
 
-base = df[df["origin_uf"].isin(ufs)].copy() if ufs else df.copy()
+base = df[df["origin_uf"].isin(ufs)].copy()
+
+ui.breadcrumb("Case: Precificação de Frete · <b>Demo interativa</b>")
+
+if base.empty:
+    ui.hero(
+        "01. Precificação de Frete Rodoviário BR",
+        "Onde o frete pesa na composição de custo e quanto isso fica acima do piso ANTT?",
+        frameworks=["NTC&Logística", "Piso mínimo ANTT", "Sensibilidade diesel (ANP)"],
+        selo=brand.maturidade(
+            metodo="coeficientes curados", producao="tabela contratada + ANTT vigente"
+        ),
+        metric={
+            "label": "Frete estimado da carteira",
+            "value": fmt.fmt_currency(0, decimals=0),
+            "delta": "Selecione pelo menos uma UF",
+            "help": "Soma do frete estimado dos embarques filtrados vs soma do piso mínimo ANTT.",
+        },
+    )
+    ui.insight(
+        "Nenhum embarque com os filtros atuais. Selecione pelo menos uma UF de origem.",
+        icone="🚚",
+    )
+    ui.footer()
+    st.stop()
 
 
 def calcular(row: pd.Series) -> pd.Series:
@@ -86,8 +110,6 @@ piso_total = calc["piso_antt"].sum()
 acima_pct = (frete_total / piso_total - 1) * 100 if piso_total else 0
 custo_kg = frete_total / max(calc["peso_taxavel_kg"].sum(), 1)
 
-ui.breadcrumb("Case: Precificação de Frete · <b>Demo interativa</b>")
-
 ui.hero(
     "01. Precificação de Frete Rodoviário BR",
     "Onde o frete pesa na composição de custo e quanto isso fica acima do piso ANTT?",
@@ -121,8 +143,6 @@ ui.kpi_grid(
     ]
 )
 
-st.divider()
-
 # Tabs para demo profunda ------------------------------------------------------
 tab_visao, tab_analise, tab_exportar = st.tabs(["Visão Geral", "Análise", "Exportar"])
 
@@ -151,6 +171,17 @@ with tab_visao:
         m = folium_maps.base_map(center=(-18, -47), zoom=4, height=ui.map_height(brand.MAP_FULL_HEIGHT))
         if edges:
             m = folium_maps.add_network(m, nodes, edges, lat="lat", lon="lon", label="uf")
+            max_label = fmt.fmt_currency(fluxo["frete_total"].max(), decimals=0)
+            min_label = fmt.fmt_currency(fluxo["frete_total"].min(), decimals=0)
+            m = folium_maps.add_legend(
+                m,
+                "Frete total no corredor",
+                [
+                    {"color": brand.PRIMARY, "label": f"Maior ({max_label}) — linha mais grossa"},
+                    {"color": brand.PRIMARY, "label": f"Menor ({min_label}) — linha mais fina"},
+                ],
+                position="bottomright",
+            )
         folium_maps.render(m, height=ui.map_height(brand.MAP_FULL_HEIGHT), key="frete_fluxos")
         st.caption(
             "Espessura da linha ∝ frete total no corredor UF→UF. "
@@ -170,9 +201,10 @@ with tab_visao:
                 measure=["relative"] * len(componentes) + ["total"],
                 x=componentes + ["Total"],
                 y=valores + [sum(valores)],
-                connector=dict(line=dict(color=brand.BORDER)),
+                connector=dict(line=dict(color=brand.BORDER, width=2)),
                 increasing=dict(marker=dict(color=brand.ACCENT)),
                 totals=dict(marker=dict(color=brand.PRIMARY)),
+                decreasing=dict(marker=dict(color=brand.DANGER)),
                 hovertemplate=hover_comp + "<extra></extra>",
             )
         )
@@ -180,6 +212,7 @@ with tab_visao:
             height=ui.chart_height(brand.CHART_FULL_HEIGHT),
             margin=dict(t=10, b=10, l=10, r=10),
             yaxis_title="R$",
+            showlegend=False,
         )
         ui.plot(wf, width="stretch")
 
@@ -211,7 +244,7 @@ with tab_analise:
         y=top["piso_antt"],
         name="Piso ANTT",
         marker_color=brand.ACCENT,
-        hovertemplate="Piso ANTT: %{y:,.2f}<extra></extra>",
+        hovertemplate="Piso ANTT: R$ %{y:,.2f}<extra></extra>",
     )
     comp_fig.update_layout(
         barmode="group",
@@ -277,9 +310,8 @@ with tab_exportar:
             "acima_piso_pct",
         ]
     ].round(2)
-    # Status de risco para formatação condicional
     tabela["status_piso"] = tabela["acima_piso_pct"].apply(
-        lambda x: "Apto" if x >= 0 else "Abaixo do piso"
+        lambda x: tables.status_text("Acima do piso") if x >= 0 else tables.status_text("Abaixo do piso")
     )
 
     config = {
@@ -292,7 +324,7 @@ with tab_exportar:
         "frete_total": tables.currency_column("Frete estimado"),
         "piso_antt": tables.currency_column("Piso ANTT"),
         "acima_piso_pct": tables.percent_column("Acima do piso", signed=True),
-        "status_piso": tables.status_column("Status"),
+        "status_piso": tables.status_column("Status vs piso ANTT"),
     }
     tables.format_dataframe(tabela, config=config, hide_index=True)
     ui.download_csv_button(tabela, "precificacao_frete.csv")
@@ -323,5 +355,5 @@ ui.provenance_expander(
     limitacoes="Coeficientes ilustrativos; não é cotação nem validação regulatória de piso.",
 )
 
-ui.demo_cta(next_demo_path="pages/02_mini_torre_controle.py")
+ui.demo_cta(next_demo_path="pages/mini_torre_controle.py")
 ui.footer()

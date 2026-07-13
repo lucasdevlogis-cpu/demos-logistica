@@ -8,7 +8,6 @@ arquitetura: Fleetbase (LSOS) / OMS de fulfillment distribuído.
 import folium
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 from lib import brand, folium_maps as fmap, format as fmt, geo, tables, ui
 
@@ -135,8 +134,6 @@ ui.kpi_grid(
     ]
 )
 
-st.divider()
-
 # Tabs ------------------------------------------------------------------------
 tab_visao, tab_analise, tab_exportar = st.tabs(["Visão Geral", "Análise", "Exportar"])
 
@@ -152,18 +149,35 @@ with tab_visao:
         dest_lon="dest_lon",
         color_by="origem_tipo",
         popup_fields=["pedido_id", "origem_escolhida", "origem_tipo", "distancia_km", "economia"],
+        layer_control=not ui.is_embed(),
     )
     # Origens
     for _, o in origens.iterrows():
         folium.Marker(
             location=[o["lat"], o["lon"]],
             tooltip=o["origem_id"],
-            icon=fmap.icon_for(o["origem_tipo"].lower()),
+            icon=fmap._brand_icon(
+                o["origem_tipo"].lower(),
+                {"CD": brand.PRIMARY, "Loja": brand.WARM_ACCENT, "Hub": brand.ACCENT}.get(
+                    o["origem_tipo"], brand.PRIMARY
+                ),
+            ),
         ).add_to(m)
+    tipo_colors = {"CD": brand.PRIMARY, "Loja": brand.ACCENT, "Hub": brand.WARM_ACCENT}
+    m = fmap.add_legend(
+        m,
+        "Origem do envio",
+        [
+            {"color": tipo_colors[t], "label": t}
+            for t in res["origem_tipo"].unique()
+            if t in tipo_colors
+        ],
+        position="bottomright",
+    )
     fmap.render(m, height=ui.map_height(brand.MAP_FULL_HEIGHT), key="sfs_mapa")
     st.caption(
         "Linhas retas entre origem e destino (geodésicas), não rotas rodoviárias reais. "
-        "Espessura uniforme; cores por tipo de origem."
+        "Cores por tipo de origem (ver legenda)."
     )
 
 with tab_analise:
@@ -175,7 +189,7 @@ with tab_analise:
             .size()
             .reset_index(name="pedidos")
         )
-        tipo_colors = {"CD": brand.PRIMARY, "Loja": brand.ACCENT, "Hub": brand.WARNING}
+        tipo_colors = {"CD": brand.PRIMARY, "Loja": brand.ACCENT, "Hub": brand.WARM_ACCENT}
         fig2 = px.bar(
             porig,
             x="origem_escolhida",
@@ -184,7 +198,10 @@ with tab_analise:
             color_discrete_map=tipo_colors,
         )
         fig2.update_layout(
-            height=ui.chart_height(brand.CHART_HALF_HEIGHT), xaxis_title="", yaxis_title="pedidos"
+            height=ui.chart_height(brand.CHART_HALF_HEIGHT),
+            xaxis_title="",
+            yaxis_title="pedidos",
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         )
         fig2.update_traces(
             hovertemplate=fmt.fmt_hover(
@@ -261,5 +278,5 @@ ui.provenance_expander(
     producao="OMS integrado a WMS/ERP com estoque e SLA por praça.",
     limitacoes="Sem estoque por SKU, rede viária ou regras fiscais; distância proxy.",
 )
-ui.demo_cta(next_demo_path="pages/09_tsp_baseline_sp.py")
+ui.demo_cta(next_demo_path="pages/tsp_baseline_sp.py")
 ui.footer()

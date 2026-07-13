@@ -2,7 +2,6 @@
 
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 import streamlit as st
 from lib import brand, format as fmt, tables, ui
 
@@ -120,10 +119,10 @@ ui.hero(
         metodo="regras/keywords", producao="modelo supervisionado + revisão humana"
     ),
     metric={
-        "label": "Acurácia na amostra rotulada",
+        "label": "Concordância na amostra de desenvolvimento",
         "value": fmt.fmt_percent(acuracia, decimals=0),
         "delta": f"{alta} de {len(classificado)} classificadas como prioridade Alta",
-        "help": "Concordância entre a regra e o rótulo curado da amostra.",
+        "help": "Métrica no mesmo conjunto usado para ajustar as regras; pode superestimar a performance real. Produção exige validação em dados futuros.",
     },
 )
 
@@ -149,8 +148,6 @@ ui.kpi_grid(
     ]
 )
 
-st.divider()
-
 ui.section("Classificar uma ocorrência")
 exemplo = "Cliente ausente no endereço na segunda tentativa — portaria fechada, necessário reagendar."
 texto = st.text_area("Cole o texto da ocorrência", value=exemplo, height=110)
@@ -168,7 +165,12 @@ if "ultimo" in st.session_state:
             {"label": "Ação sugerida", "value": r["acao"]},
         ]
     )
-    st.progress(r["confianca"], text=f"Confiança: {r['confianca']:.0%}")
+    ui.progress_bar(
+        label="Confiança da classificação",
+        valor=r["confianca"] * 100,
+        maximo=100.0,
+        cor=brand.SEVERITY_COLORS.get(r["prioridade"], brand.ACCENT),
+    )
 
 st.divider()
 
@@ -178,12 +180,13 @@ with col1:
     ui.section("Volume por categoria")
     cat = classificado["categoria_prevista"].value_counts().reset_index()
     cat.columns = ["categoria", "qtd"]
+    cat = cat.sort_values("qtd", ascending=True)
     fig = px.bar(
         cat,
-        x="categoria",
-        y="qtd",
-        color="categoria",
-        color_discrete_sequence=brand.SEQ,
+        x="qtd",
+        y="categoria",
+        orientation="h",
+        color_discrete_sequence=[brand.PRIMARY],
     )
     fig.update_layout(
         height=ui.chart_height(brand.CHART_HALF_HEIGHT),
@@ -192,28 +195,32 @@ with col1:
         yaxis_title="",
     )
     fig.update_traces(
-        hovertemplate=fmt.fmt_hover([("Categoria", "%{x}"), ("Ocorrências", "%{y}")])
+        hovertemplate=fmt.fmt_hover([("Categoria", "%{y}"), ("Ocorrências", "%{x}")])
     )
     ui.plot(fig, width="stretch")
 with col2:
     ui.section("Distribuição por prioridade")
     pri = classificado["prioridade_prevista"].value_counts().reset_index()
     pri.columns = ["prioridade", "qtd"]
-    fig2 = px.pie(
+    ordem_prioridade = {"Alta": 0, "Média": 1, "Baixa": 2}
+    pri["ordem"] = pri["prioridade"].map(ordem_prioridade)
+    pri = pri.sort_values("ordem", ascending=False)
+    fig2 = px.bar(
         pri,
-        names="prioridade",
-        values="qtd",
-        hole=0.5,
+        x="qtd",
+        y="prioridade",
+        orientation="h",
         color="prioridade",
         color_discrete_map=brand.SEVERITY_COLORS,
     )
     fig2.update_traces(
-        hovertemplate=fmt.fmt_hover([("Prioridade", "%{label}"), ("Ocorrências", "%{value}")])
+        hovertemplate=fmt.fmt_hover([("Prioridade", "%{y}"), ("Ocorrências", "%{x}")])
     )
     fig2.update_layout(
         height=ui.chart_height(brand.CHART_HALF_HEIGHT),
-        margin=dict(t=10, b=80, l=10, r=10),
-        legend=dict(orientation="h", yanchor="bottom", y=-0.15, xanchor="center", x=0.5),
+        showlegend=False,
+        xaxis_title="",
+        yaxis_title="",
     )
     ui.plot(fig2, width="stretch")
 
@@ -252,5 +259,5 @@ ui.provenance_expander(
     producao="Modelo NLP supervisionado + validação humana.",
     limitacoes="Sem ML treinado; regras não cobrem variações de linguagem.",
 )
-ui.demo_cta(next_demo_path="pages/08_ship_from_store.py")
+ui.demo_cta(next_demo_path="pages/ship_from_store.py")
 ui.footer()

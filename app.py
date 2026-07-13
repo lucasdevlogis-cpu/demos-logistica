@@ -11,35 +11,35 @@ ui.sidebar_brand()
 
 PROFUNDAS = [
     (
-        "pages/01_precificacao_frete.py",
+        "pages/precificacao_frete.py",
         "01",
         "Precificação de Frete BR",
         "Onde o frete pesa e quanto fica acima do piso ANTT?",
         "🚚",
     ),
     (
-        "pages/03_cvrp_urbano.py",
+        "pages/cvrp_urbano.py",
         "03",
         "Roteirização Urbana CVRP",
         "Quantos veículos e quanta distância economizar?",
         "🗺️",
     ),
     (
-        "pages/05_vrptw_ultima_milha.py",
+        "pages/vrptw_ultima_milha.py",
         "05",
         "VRPTW Última Milha",
         "A sequência respeita as janelas prometidas?",
         "⏱️",
     ),
     (
-        "pages/06_rede_interhubs.py",
+        "pages/rede_interhubs.py",
         "06",
         "Rede Inter-hubs",
         "Qual corredor tem melhor custo por tonelada?",
         "🕸️",
     ),
     (
-        "pages/08_ship_from_store.py",
+        "pages/ship_from_store.py",
         "08",
         "Ship-from-Store",
         "Quando loja/hub supera o CD como origem?",
@@ -48,35 +48,35 @@ PROFUNDAS = [
 ]
 PONTUAIS = [
     (
-        "pages/02_mini_torre_controle.py",
+        "pages/mini_torre_controle.py",
         "02",
         "Mini Torre de Controle",
         "Quais entregas exigem ação imediata?",
         "📡",
     ),
     (
-        "pages/04_promessa_cep.py",
+        "pages/promessa_cep.py",
         "04",
         "Promessa por CEP",
         "Qual praça concentra risco de atraso?",
         "📍",
     ),
     (
-        "pages/07_classificador_ocorrencias.py",
+        "pages/classificador_ocorrencias.py",
         "07",
         "Classificador de Ocorrências",
         "Como triar textos operacionais?",
         "🏷️",
     ),
     (
-        "pages/09_tsp_baseline_sp.py",
+        "pages/tsp_baseline_sp.py",
         "09",
         "TSP Baseline SP",
         "Qual a melhor sequência de visitas?",
         "🧭",
     ),
     (
-        "pages/10_auditoria_endereco.py",
+        "pages/auditoria_endereco.py",
         "10",
         "Auditoria de Endereço",
         "Endereços têm confiança para prometer?",
@@ -162,7 +162,10 @@ try:
     folium_maps.render(m, height=ui.map_height(brand.MAP_FULL_HEIGHT), key="home_rede_interhubs")
     st.caption("Corredores entre hubs. Linhas retas, não rotas rodoviárias reais.")
 except FileNotFoundError:
-    st.info("Rode `python scripts/build_datasets.py` para gerar os dados das demos.")
+    ui.insight(
+        "Rode `python scripts/build_datasets.py` para gerar os dados das demos.",
+        icone="📦",
+    )
 
 ui.section(
     "Provas profundas",
@@ -185,9 +188,10 @@ with col_fw:
     )
 with col_prov:
     ui.section("Transparência")
-    ui.nav_link("pages/11_sobre_dados_metodos.py", "Dados e métodos")
+    ui.nav_link("pages/sobre_dados_metodos.py", "Dados e métodos")
 
-st.info(
-    "**Limitação:** dados sintéticos/curados para demonstração. Para decisão real, validar premissas, integração e governança da operação."
+ui.insight(
+    "**Limitação:** dados sintéticos/curados para demonstração. Para decisão real, validar premissas, integração e governança da operação.",
+    icone="🛡️",
 )
 ui.footer()

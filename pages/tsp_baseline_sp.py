@@ -8,7 +8,7 @@ viária real (OSMnx/OSRM).
 import pandas as pd
 import plotly.express as px
 import streamlit as st
-from lib import brand, folium_maps as fm, format, geo, tables, ui
+from lib import brand, folium_maps as fm, format as fmt, geo, tables, ui
 
 ui.page_setup("09. TSP Baseline SP", icon="🧭")
 
@@ -49,13 +49,13 @@ ui.hero(
         metodo="nearest-neighbor + 2-opt", producao="OR-Tools sobre rede real"
     ),
     metric={
-        "label": "Distância otimizada",
-        "value": f"{format.fmt_number(d_final, decimals=1)} km",
+        "label": "Distância melhorada",
+        "value": f"{fmt.fmt_number(d_final, decimals=1)} km",
         "delta": (
-            f"-{format.fmt_percent(economia_pct, decimals=0)} "
-            f"vs ordem de cadastro ({format.fmt_number(d_cadastro, decimals=1)} km)"
+            f"-{fmt.fmt_percent(economia_pct, decimals=0)} "
+            f"vs ordem de cadastro ({fmt.fmt_number(d_cadastro, decimals=1)} km)"
         ),
-        "help": "Rota fechada saindo e voltando ao CD.",
+        "help": "Rota fechada saindo e voltando ao CD. Melhoria local (2-opt), não ótimo global garantido.",
     },
 )
 
@@ -63,13 +63,33 @@ ui.kpi_grid(
     [
         {"label": "Pontos de visita", "value": f"{len(visitas)}"},
         {"label": "Tempo estimado", "value": f"{tempo_min / 60:.1f} h"},
-        {"label": "Nearest-neighbor", "value": f"{format.fmt_number(d_nn, decimals=1)} km"},
+        {"label": "Nearest-neighbor", "value": f"{fmt.fmt_number(d_nn, decimals=1)} km"},
         {
             "label": "Ganho 2-opt",
-            "value": f"{format.fmt_number(d_nn - d_final, decimals=1)} km",
+            "value": f"{fmt.fmt_number(d_nn - d_final, decimals=1)} km",
         },
     ]
 )
+
+col_a, col_b, col_c = st.columns(3)
+with col_a:
+    ui.kpi_metric(
+        "Economia vs cadastro",
+        fmt.fmt_percent(economia_pct, decimals=1),
+        severity="success",
+    )
+with col_b:
+    ui.kpi_metric(
+        "Ganho do 2-opt",
+        fmt.fmt_number(d_nn - d_final, decimals=1) + " km",
+        severity="success",
+    )
+with col_c:
+    ui.kpi_metric(
+        "Tempo estimado",
+        f"{tempo_min / 60:.1f} h",
+        severity="success",
+    )
 
 route_coords = [coords[i] for i in ordem_final] + [coords[ordem_final[0]]]
 route_labels = [nomes[i] for i in ordem_final] + [nomes[ordem_final[0]]]
@@ -85,7 +105,7 @@ comp = pd.DataFrame(
     {
         "método": ["Ordem cadastro", "Nearest-neighbor", "NN + 2-opt"],
         "km": [round(d_cadastro, 1), round(d_nn, 1), round(d_final, 1)],
-        "status": ["Baseline", "Intermediário", "Otimizado"],
+        "status": ["Baseline", "Intermediário", "Melhorado"],
     }
 )
 
@@ -94,7 +114,7 @@ tab_visao, tab_analise, tab_exportar = st.tabs(["Visão Geral", "Análise", "Exp
 with tab_visao:
     map_detail = not ui.is_embed()
     ui.section(
-        "Rota otimizada",
+        "Rota melhorada",
         "Marcadores numerados e setas de direção."
         if map_detail
         else "Rota compacta para leitura no modal da landing.",
@@ -110,13 +130,22 @@ with tab_visao:
         [
             {
                 "coords": route_coords,
-                "label": "Sequência otimizada",
+                "label": "Sequência melhorada",
                 "color": brand.PRIMARY,
             }
         ],
         depot=(depot_row["lat"], depot_row["lon"]),
         show_numbers=map_detail,
         show_arrows=map_detail,
+    )
+    m = fm.add_legend(
+        m,
+        "Paradas",
+        [
+            {"color": brand.PRIMARY, "label": "CD / origem"},
+            {"color": brand.ACCENT, "label": "Ponto de visita"},
+        ],
+        position="bottomright",
     )
     fm.render(m, height=map_height, key="tsp_mapa")
     st.caption(
@@ -131,7 +160,7 @@ with tab_analise:
         color_map = {
             "Baseline": brand.DANGER,
             "Intermediário": brand.WARNING,
-            "Otimizado": brand.SUCCESS,
+            "Melhorado": brand.SUCCESS,
         }
         fig = px.bar(
             comp,
@@ -142,7 +171,7 @@ with tab_analise:
             category_orders={"método": ["Ordem cadastro", "Nearest-neighbor", "NN + 2-opt"]},
         )
         fig.update_traces(
-            hovertemplate=format.fmt_hover(
+            hovertemplate=fmt.fmt_hover(
                 [
                     ("Método", "%{x}"),
                     ("Distância", "%{y:,.1f} km"),
@@ -172,28 +201,6 @@ with tab_analise:
         }
         tables.format_dataframe(seq, config)
 
-    st.divider()
-
-    col_a, col_b, col_c = st.columns(3)
-    with col_a:
-        ui.kpi_metric(
-            "Economia vs cadastro",
-            format.fmt_percent(economia_pct, decimals=1),
-            severity="success",
-        )
-    with col_b:
-        ui.kpi_metric(
-            "Ganho do 2-opt",
-            format.fmt_number(d_nn - d_final, decimals=1) + " km",
-            severity="success",
-        )
-    with col_c:
-        ui.kpi_metric(
-            "Tempo estimado",
-            f"{tempo_min / 60:.1f} h",
-            severity="success",
-        )
-
 with tab_exportar:
     ui.section("Exportar resultados")
     ui.download_csv_button(seq, "tsp_sequencia.csv")
@@ -212,6 +219,6 @@ ui.provenance_expander(
     producao="OR-Tools sobre matriz de rede (OSMnx/OSRM).",
     limitacoes="Sem capacidade, SLA, tráfego ou rota viária real; distância Haversine.",
 )
-ui.demo_cta(next_demo_path="pages/10_auditoria_endereco.py")
+ui.demo_cta(next_demo_path="pages/auditoria_endereco.py")
 
 ui.footer()
